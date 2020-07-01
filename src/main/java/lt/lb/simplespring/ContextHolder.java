@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 /**
  *
+ * Component class holding ApplicationContex, for using simple manual injections.
  * @author laim0nas100
  */
 @Component
@@ -52,11 +53,29 @@ public class ContextHolder implements ApplicationContextAware {
         ContextHolder.ctx = applicationContext;
     }
 
+    /**
+     *
+     * @return ApplicationContext, or null
+     */
     public static ApplicationContext getApplicationContext() {
         return ContextHolder.ctx;
     }
 
-    public static <T> T autowire(T object) {
+    /**
+     * Populate the given bean instance through applying after-instantiation
+     * callbacks and bean property post-processing (e.g. for annotation-driven
+     * injection).
+     * <p>
+     * Note: This is essentially intended for (re-)populating annotated fields
+     * and methods, either for new instances or for deserialized instances. It
+     * does
+     * <i>not</i> imply traditional by-name or by-type autowiring of properties;
+     * use {@link #autowireBeanProperties} for those purposes.
+     *
+     * @param existingBean the existing bean instance
+     * @throws BeansException if wiring failed
+     */
+    public static <T> T autowireBean(T object) {
         ContextHolder.getApplicationContext().getAutowireCapableBeanFactory().autowireBean(object);
         return object;
     }
@@ -64,10 +83,18 @@ public class ContextHolder implements ApplicationContextAware {
     private static ConcurrentLinkedDeque<Runnable> initTasks = new ConcurrentLinkedDeque<>();
     private static ConcurrentLinkedDeque<Runnable> shutdownTasks = new ConcurrentLinkedDeque<>();
 
+    /**
+     * Add init task to run after init
+     * @param run 
+     */
     public static void addInitTask(Runnable run) {
         addOrRun(initDone, run, initTasks);
     }
 
+    /**
+     * Add shutdown task to run after shutdown
+     * @param run 
+     */
     public static void addShutdownTask(Runnable run) {
         addOrRun(shutdownDone, run, shutdownTasks);
     }
