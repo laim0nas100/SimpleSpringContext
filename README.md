@@ -2,11 +2,9 @@
 
 Simple Spring context.
 
-Add ContextHolder component class to your Spring project configuration, to statically access default or any configured context.
+Add ContextHolder component class to your Spring project configuration, to statically access root or any configured context.
 
-Also supports all ApplicationContextEvent type events.
-
-Will only run after init event and after shutdown event.
+Also supports all ApplicationContextEvent types.
 
     ContextHolder.addRefreshTask(ctx -> {
     ... some refresh at any point of application lifetime
