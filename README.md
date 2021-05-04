@@ -8,19 +8,19 @@ Also supports all ApplicationContextEvent type events.
 
 Will only run after init event and after shutdown event.
 
-    ContextHolder.addRefreshTask(() -> {
+    ContextHolder.addRefreshTask(ctx -> {
     ... some refresh at any point of application lifetime
     });
 
-    ContextHolder.addStartTask(() -> {
+    ContextHolder.addStartTask(ctx -> {
     ... some initialization at any point of application lifetime
     });
 
-    ContextHolder.addStopTask(() -> {
+    ContextHolder.addStopTask(ctx -> {
     ... some cleanup at any point of application lifetime
     });
 
-    ContextHolder.addCloseTask(() -> {
+    ContextHolder.addCloseTask(ctx -> {
     ... some shut-down cleanup (no more refresh possible) at any point of application lifetime
     });
 
