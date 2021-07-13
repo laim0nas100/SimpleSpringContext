@@ -21,7 +21,7 @@ public class CtxTasks {
         while (iterator.hasNext()) {
             CtxConsumer next = iterator.next();
             if (next != null) {
-                next.acceptSafe(ctx);
+                next.accept(ctx);
             }
         }
     }

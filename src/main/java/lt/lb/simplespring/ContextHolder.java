@@ -22,7 +22,10 @@ import org.springframework.stereotype.Component;
  * injections, and controlling context events. For example - executor service
  * shutdown hooks can be configured here.
  *
- * Can hold multiple contexts. First one initialized becomes the root.
+ * Can hold multiple contexts. Usually the first one initialized becomes the
+ * root, but traverses hierarchy to find root.
+ *
+ * Refreshes spring context as needed.
  *
  * @author laim0nas100
  */
@@ -32,12 +35,11 @@ public class ContextHolder implements ApplicationContextAware {
     public static class InnerCtx extends CtxTasks {
 
         public final ApplicationContext ctx;
-        
-        
-        public int parentLevel(ApplicationContext[] assing){
+
+        public int parentLevel(ApplicationContext[] assing) {
             int i = 0;
             ApplicationContext me = ctx;
-            while(me.getParent() != null){
+            while (me.getParent() != null) {
                 i++;
                 me = me.getParent();
             }
@@ -121,18 +123,16 @@ public class ContextHolder implements ApplicationContextAware {
         Collection<InnerCtx> values = contexts.values();
         ApplicationContext root = null;
         int maxLevel = -1;
-        
-        for(InnerCtx inner:values){
-            ApplicationContext[] newRoot = new ApplicationContext[1];
+        ApplicationContext[] newRoot = new ApplicationContext[1];
+        for (InnerCtx inner : values) {
             int parentLevel = inner.parentLevel(newRoot);
-            if(parentLevel > maxLevel){
+            if (parentLevel > maxLevel) {
                 root = newRoot[0];
                 maxLevel = parentLevel;
             }
         }
         return root;
     }
-        
 
     /**
      *
