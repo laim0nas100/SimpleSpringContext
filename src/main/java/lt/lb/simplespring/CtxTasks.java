@@ -1,7 +1,8 @@
 package lt.lb.simplespring;
 
-import java.util.Collection;
+import java.util.EnumMap;
 import java.util.Iterator;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.context.ApplicationContext;
@@ -10,40 +11,70 @@ import org.springframework.context.ApplicationContext;
  *
  * @author laim0nas100
  */
-public class CtxTasks {
+public abstract class CtxTasks {
 
-    public final AtomicBoolean closed = new AtomicBoolean(false);
-    public final AtomicBoolean started = new AtomicBoolean(false);
+    public static class Subset {
 
-    public final ConcurrentLinkedDeque<CtxConsumer> startTasks = new ConcurrentLinkedDeque<>();
-    public final ConcurrentLinkedDeque<CtxConsumer> closeTasks = new ConcurrentLinkedDeque<>();
-    public final ConcurrentLinkedDeque<CtxConsumer> refreshTasks = new ConcurrentLinkedDeque<>();
-    public final ConcurrentLinkedDeque<CtxConsumer> stopTasks = new ConcurrentLinkedDeque<>();
+        public final ContextEventType type;
+        public final ConcurrentLinkedDeque<CtxConsumer> tasks = new ConcurrentLinkedDeque<>();
+        public final ConcurrentHashMap<CtxConsumer, Boolean> doneTasks = new ConcurrentHashMap<>();
+        public final AtomicBoolean hasOccured = new AtomicBoolean(false);
 
-    public static void runTasks(ApplicationContext ctx, Collection<CtxConsumer> tasks) {
-        Iterator<CtxConsumer> iterator = tasks.iterator();
-        while (iterator.hasNext()) {
-            CtxConsumer next = iterator.next();
-            if (next != null) {
-                next.accept(ctx);
+        public Subset(ContextEventType type) {
+            this.type = type;
+        }
+
+        protected void runIfOccured(ApplicationContext ctx, CtxConsumer consumer) {
+            if (hasOccured.get()) {
+                doneTasks.computeIfPresent(consumer, (k, v) -> {
+                    if (!v) {
+                        k.accept(ctx);
+                    }
+                    return true;
+                });
             }
         }
     }
 
-    public boolean setStarted() {
-        return started.compareAndSet(false, true);
+    public final EnumMap<ContextEventType, Subset> tasks = new EnumMap<>(ContextEventType.class);
+
+    public CtxTasks() {
+        tasks.put(ContextEventType.STOP, new Subset(ContextEventType.STOP));
+        tasks.put(ContextEventType.START, new Subset(ContextEventType.START));
+        tasks.put(ContextEventType.CLOSE, new Subset(ContextEventType.CLOSE));
+        tasks.put(ContextEventType.REFRESH, new Subset(ContextEventType.REFRESH));
+
     }
 
-    public boolean setClosed() {
-        return closed.compareAndSet(false, true);
+    public void runTasksByEvent(ApplicationContext ctx, ContextEventType type) {
+        Subset subset = tasks.get(type);
+        subset.hasOccured.set(true);
+        Iterator<CtxConsumer> iterator = subset.tasks.iterator();
+        while (iterator.hasNext()) {
+            CtxConsumer consumer = iterator.next();
+            if(consumer != null){
+                 subset.runIfOccured(ctx, consumer);
+            }
+        }
     }
 
-    public boolean isStarted() {
-        return started.get();
+    public void addOrRun(ContextEventType type, CtxConsumer task) {
+        Subset subset = tasks.get(type);
+        subset.doneTasks.computeIfAbsent(task, k -> {
+            subset.tasks.add(k);
+            return false;
+        });
+        subset.runIfOccured(getContext(), task);
+    }
+    
+    public abstract ApplicationContext getContext();
+
+    public void set(ContextEventType type) {
+        tasks.get(type).hasOccured.set(true);
     }
 
-    public boolean isClosed() {
-        return closed.get();
+    public boolean is(ContextEventType type) {
+        return tasks.get(type).hasOccured.get();
     }
 
 }

@@ -7,6 +7,7 @@ import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationListener;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.ContextStartedEvent;
@@ -26,71 +27,72 @@ import org.springframework.stereotype.Component;
  *
  * @author laim0nas100
  */
+@Configuration
 @Component
 public class ContextHolder implements ApplicationContextAware {
-    
+
     private static Map<String, InnerCtx> contexts = new ConcurrentHashMap<>();
-    private static volatile CtxTasks forEveryContext = new CtxTasks();
-    
+    private static volatile CtxTasks forEveryContext = new CtxTasks() {
+        @Override
+        public ApplicationContext getContext() {
+            return null;
+        }
+    };
+
     private static InnerCtx getLazyInitInner(ApplicationContext ctx) {
         Objects.requireNonNull(ctx);
         return contexts.computeIfAbsent(ctx.getId(), c -> new InnerCtx(ctx));
     }
-    
+
     @Component
     public static class RefreshEventListener implements ApplicationListener<ContextRefreshedEvent> {
-        
+
         @Override
         public void onApplicationEvent(ContextRefreshedEvent event) {
+
             ApplicationContext ctx = event.getApplicationContext();
-            CtxTasks.runTasks(ctx, getLazyInitInner(ctx).refreshTasks);
-            CtxTasks.runTasks(ctx, forEveryContext.refreshTasks);
+            getLazyInitInner(ctx).runTasksByEvent(ctx, ContextEventType.REFRESH);
+            forEveryContext.runTasksByEvent(ctx, ContextEventType.REFRESH);
         }
-        
+
     }
-    
+
     @Component
     public static class StopEventListener implements ApplicationListener<ContextStoppedEvent> {
-        
+
         @Override
         public void onApplicationEvent(ContextStoppedEvent event) {
             ApplicationContext ctx = event.getApplicationContext();
-            CtxTasks.runTasks(ctx, getLazyInitInner(ctx).stopTasks);
-            CtxTasks.runTasks(ctx, forEveryContext.stopTasks);
+            getLazyInitInner(ctx).runTasksByEvent(ctx, ContextEventType.STOP);
+            forEveryContext.runTasksByEvent(ctx, ContextEventType.STOP);
         }
-        
+
     }
-    
+
     @Component
     public static class StartEventListener implements ApplicationListener<ContextStartedEvent> {
-        
+
         @Override
         public void onApplicationEvent(ContextStartedEvent event) {
             ApplicationContext ctx = event.getApplicationContext();
-            InnerCtx inner = getLazyInitInner(ctx);
-            inner.setStarted();
-            CtxTasks.runTasks(ctx, inner.startTasks);
-            CtxTasks.runTasks(ctx, forEveryContext.startTasks);
-            forEveryContext.setStarted();
+            getLazyInitInner(ctx).runTasksByEvent(ctx, ContextEventType.START);
+            forEveryContext.runTasksByEvent(ctx, ContextEventType.START);
         }
-        
+
     }
-    
+
     @Component
     public static class CloseEventListener implements ApplicationListener<ContextClosedEvent> {
-        
+
         @Override
         public void onApplicationEvent(ContextClosedEvent event) {
             ApplicationContext ctx = event.getApplicationContext();
-            InnerCtx inner = getLazyInitInner(ctx);
-            inner.setClosed();
-            CtxTasks.runTasks(ctx, inner.closeTasks);
-            CtxTasks.runTasks(ctx, forEveryContext.closeTasks);
-            forEveryContext.setClosed();
+            getLazyInitInner(ctx).runTasksByEvent(ctx, ContextEventType.CLOSE);
+            forEveryContext.runTasksByEvent(ctx, ContextEventType.CLOSE);
         }
-        
+
     }
-    
+
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         getLazyInitInner(applicationContext);
@@ -102,7 +104,7 @@ public class ContextHolder implements ApplicationContextAware {
      */
     public static ApplicationContext getApplicationContext() {
         ApplicationContext[] ctxs = getApplicationContexts();
-        if(ctxs.length == 0){
+        if (ctxs.length == 0) {
             return null;
         }
         return ctxs[0];
@@ -141,7 +143,7 @@ public class ContextHolder implements ApplicationContextAware {
      * @param run
      */
     public static void addStopTask(CtxConsumer run) {
-        forEveryContext.stopTasks.add(run);
+        forEveryContext.addOrRun(ContextEventType.STOP, run);
     }
 
     /**
@@ -150,7 +152,7 @@ public class ContextHolder implements ApplicationContextAware {
      * @param run
      */
     public static void addRefreshTask(CtxConsumer run) {
-        forEveryContext.refreshTasks.add(run);
+        forEveryContext.addOrRun(ContextEventType.REFRESH, run);
     }
 
     /**
@@ -159,7 +161,7 @@ public class ContextHolder implements ApplicationContextAware {
      * @param run
      */
     public static void addCloseTask(CtxConsumer run) {
-        forEveryContext.closeTasks.add(run);
+        forEveryContext.addOrRun(ContextEventType.CLOSE, run);
     }
 
     /**
@@ -168,7 +170,7 @@ public class ContextHolder implements ApplicationContextAware {
      * @param run
      */
     public static void addStartTask(CtxConsumer run) {
-        forEveryContext.startTasks.add(run);
+        forEveryContext.addOrRun(ContextEventType.START, run);
     }
 
     /**
@@ -179,7 +181,7 @@ public class ContextHolder implements ApplicationContextAware {
      * @param run
      */
     public static void addStopTask(ApplicationContext ctx, CtxConsumer run) {
-        getLazyInitInner(ctx).stopTasks.add(run);
+        getLazyInitInner(ctx).addOrRun(ContextEventType.STOP, run);
     }
 
     /**
@@ -190,7 +192,7 @@ public class ContextHolder implements ApplicationContextAware {
      * @param run
      */
     public static void addRefreshTask(ApplicationContext ctx, CtxConsumer run) {
-        getLazyInitInner(ctx).refreshTasks.add(run);
+        getLazyInitInner(ctx).addOrRun(ContextEventType.REFRESH, run);
     }
 
     /**
@@ -200,7 +202,7 @@ public class ContextHolder implements ApplicationContextAware {
      * @param run
      */
     public static void addCloseTask(ApplicationContext ctx, CtxConsumer run) {
-        getLazyInitInner(ctx).closeTasks.add(run);
+        getLazyInitInner(ctx).addOrRun(ContextEventType.CLOSE, run);
     }
 
     /**
@@ -211,7 +213,7 @@ public class ContextHolder implements ApplicationContextAware {
      * @param run
      */
     public static void addStartTask(ApplicationContext ctx, CtxConsumer run) {
-        getLazyInitInner(ctx).startTasks.add(run);
+        getLazyInitInner(ctx).addOrRun(ContextEventType.STOP, run);
     }
 
     /**
@@ -221,7 +223,7 @@ public class ContextHolder implements ApplicationContextAware {
      * @return
      */
     public static boolean isClosed(ApplicationContext ctx) {
-        return getLazyInitInner(ctx).isClosed();
+        return getLazyInitInner(ctx).is(ContextEventType.CLOSE);
     }
 
     /**
@@ -231,7 +233,7 @@ public class ContextHolder implements ApplicationContextAware {
      * @return
      */
     public static boolean isStarted(ApplicationContext ctx) {
-        return getLazyInitInner(ctx).isStarted();
+        return getLazyInitInner(ctx).is(ContextEventType.START);
     }
 
     /**
@@ -240,7 +242,7 @@ public class ContextHolder implements ApplicationContextAware {
      * @return
      */
     public static boolean isClosed() {
-        return forEveryContext.isClosed();
+        return forEveryContext.is(ContextEventType.CLOSE);
     }
 
     /**
@@ -249,7 +251,7 @@ public class ContextHolder implements ApplicationContextAware {
      * @return
      */
     public static boolean isStarted() {
-        return forEveryContext.isStarted();
+        return forEveryContext.is(ContextEventType.START);
     }
-    
+
 }

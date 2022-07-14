@@ -10,7 +10,7 @@ import org.springframework.context.ApplicationContext;
 public class InnerCtx extends CtxTasks implements Comparable<InnerCtx> {
 
     public final ApplicationContext ctx;
-
+    
     public int parentLevel(ApplicationContext[] assing) {
         int i = 0;
         ApplicationContext me = ctx;
@@ -31,6 +31,11 @@ public class InnerCtx extends CtxTasks implements Comparable<InnerCtx> {
     @Override
     public int compareTo(InnerCtx o) {
         return Integer.compare(parentLevel(null), o.parentLevel(null));
+    }
+
+    @Override
+    public ApplicationContext getContext() {
+        return ctx;
     }
 
 }
