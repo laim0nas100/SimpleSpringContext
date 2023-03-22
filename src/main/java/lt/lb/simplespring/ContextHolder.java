@@ -213,7 +213,7 @@ public class ContextHolder implements ApplicationContextAware {
      * @param run
      */
     public static void addStartTask(ApplicationContext ctx, CtxConsumer run) {
-        getLazyInitInner(ctx).addOrRun(ContextEventType.STOP, run);
+        getLazyInitInner(ctx).addOrRun(ContextEventType.START, run);
     }
 
     /**
