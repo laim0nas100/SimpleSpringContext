@@ -105,7 +105,7 @@ public class ContextHolder implements ApplicationContextAware {
     public static ApplicationContext getApplicationContext() {
         ApplicationContext[] ctxs = getApplicationContexts();
         if (ctxs.length == 0) {
-            return null;
+            throw new IllegalArgumentException("ContextHolder does not currently hold an ApplicationContext");
         }
         return ctxs[0];
     }
