@@ -236,13 +236,17 @@ public class ContextHolder implements ApplicationContextAware {
         return getLazyInitInner(ctx).is(ContextEventType.START);
     }
 
+    public static boolean is(ContextEventType type) {
+        return forEveryContext.is(Objects.requireNonNull(type));
+    }
+
     /**
      * If any {@link ApplicationContext} is closed
      *
      * @return
      */
     public static boolean isClosed() {
-        return forEveryContext.is(ContextEventType.CLOSE);
+        return is(ContextEventType.CLOSE);
     }
 
     /**
@@ -251,7 +255,25 @@ public class ContextHolder implements ApplicationContextAware {
      * @return
      */
     public static boolean isStarted() {
-        return forEveryContext.is(ContextEventType.START);
+        return is(ContextEventType.START);
+    }
+
+    /**
+     * If any {@link ApplicationContext} is refreshed
+     *
+     * @return
+     */
+    public static boolean isRefreshed() {
+        return is(ContextEventType.REFRESH);
+    }
+
+    /**
+     * If any {@link ApplicationContext} is stopped
+     *
+     * @return
+     */
+    public static boolean isStopped() {
+        return is(ContextEventType.STOP);
     }
 
 }

@@ -39,11 +39,9 @@ public abstract class CtxTasks {
     public final EnumMap<ContextEventType, Subset> tasks = new EnumMap<>(ContextEventType.class);
 
     public CtxTasks() {
-        tasks.put(ContextEventType.STOP, new Subset(ContextEventType.STOP));
-        tasks.put(ContextEventType.START, new Subset(ContextEventType.START));
-        tasks.put(ContextEventType.CLOSE, new Subset(ContextEventType.CLOSE));
-        tasks.put(ContextEventType.REFRESH, new Subset(ContextEventType.REFRESH));
-
+        for(ContextEventType type:ContextEventType.values()){
+            tasks.put(type, new Subset(type));
+        }
     }
 
     public void runTasksByEvent(ApplicationContext ctx, ContextEventType type) {
